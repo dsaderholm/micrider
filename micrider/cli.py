@@ -7,6 +7,7 @@ from .analyze import Show
 from .shape import fader_path, open_fraction, GRID
 from .mcu import Surface, BANK_SIZE
 from . import resolve as rv
+from .init import match_tracks, render
 from .passes import banks_for, write_bank, compare_faders, Stalled
 
 CHECKLIST = """
@@ -50,6 +51,29 @@ def _plan(cfg, show, duration):
         r = show.regions(row)
         plan[tn] = (r, fader_path(r, duration, cfg.shape))
     return plan
+
+
+def cmd_init(cfg, args):
+    tl = rv.timeline()
+    rows, program, room = match_tracks(tl, args.audio_dir,
+                                       log=lambda m: print(m, file=sys.stderr))
+    try:
+        gains = rv.read_clip_gains(tl, args.workdir or args.audio_dir)
+    except Exception as e:
+        print(f"  could not read clip gains ({e}); leaving them out", file=sys.stderr)
+        gains = {}
+    text = render(rows, program, args.audio_dir, rv.Clock(tl).duration(), gains,
+                  midi_out=cfg.midi_out if cfg else "loopMIDI Port",
+                  midi_in=(cfg.midi_in if cfg and cfg.midi_in else "loopMIDI Port B"),
+                  room=room)
+    if args.out:
+        with open(args.out, "w", encoding="utf-8", newline="") as f:
+            f.write(text)
+        print(f"wrote {args.out}: {len(rows)} mic tracks" +
+              (f", program {program}" if program else ", no program track found"))
+    else:
+        print(text)
+    return 0
 
 
 def cmd_doctor(cfg, args):
@@ -220,6 +244,10 @@ def main(argv=None) -> int:
     p.add_argument("-c", "--config", default="micrider.toml")
     p.add_argument("--cache"); p.add_argument("--refresh", action="store_true")
     sub = p.add_subparsers(dest="cmd", required=True)
+    ini = sub.add_parser("init", help="generate a config from the open timeline")
+    ini.add_argument("--audio-dir", required=True)
+    ini.add_argument("-o", "--out")
+    ini.add_argument("--workdir")
     sub.add_parser("doctor", help="check MIDI, Resolve and the manual settings")
     sub.add_parser("offset", help="print the source offset read from the timeline")
     g = sub.add_parser("gains", help="read clip gain out of the current timeline")
@@ -236,8 +264,11 @@ def main(argv=None) -> int:
                    help="allow a partial range; only safe with tracks set to Latch")
     w.add_argument("-y", "--yes", action="store_true")
     args = p.parse_args(argv)
-    cfg = Config.load(args.config)
-    return {"doctor": cmd_doctor, "gains": cmd_gains, "offset": cmd_offset,
+    # `init` exists to produce the config, so it must run without one
+    cfg = Config.load(args.config) if os.path.exists(args.config) else None
+    if cfg is None and args.cmd != "init":
+        p.error(f"config not found: {args.config} (run `micrider init` to make one)")
+    return {"init": cmd_init, "doctor": cmd_doctor, "gains": cmd_gains, "offset": cmd_offset,
             "plan": cmd_plan, "verify": cmd_verify,
             "write": cmd_write}[args.cmd](cfg, args) or 0
 

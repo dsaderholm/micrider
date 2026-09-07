@@ -92,6 +92,7 @@ every track you are writing set to Latch, Write or Global.
 ## Use
 
 ```
+micrider init --audio-dir "E:/Show/Audio" -o show.toml
 micrider -c show.toml doctor
 micrider -c show.toml offset
 micrider -c show.toml gains -o gains.json
@@ -139,7 +140,20 @@ new pass covers the whole range.
 
 ### The config
 
-One TOML file describes a show. See [`examples/good-news.toml`](examples/good-news.toml).
+One TOML file describes a show, and `micrider init` writes it for you by reading the
+open timeline — track numbers, filenames, clip gains and the source offset are all
+already in there, so there is no reason to type them.
+
+```
+micrider init --audio-dir "E:/Show/Audio" -o show.toml
+```
+
+It works out which track is the backing-track reference, leaves room mics out of the
+mic list (commented, not dropped — closing a room mic between lines would pump the
+ambience), and sets `window` to the whole timeline. **Narrow `window` to one act
+before writing anything.**
+
+See [`examples/good-news.toml`](examples/good-news.toml) for the result.
 
 ```toml
 [audio]
