@@ -13,7 +13,7 @@ from __future__ import annotations
 import time
 import numpy as np
 
-from .mcu import Surface, BANK_SIZE
+from .mcu import Surface, BANK_SIZE, MIN_PITCH
 from .shape import GRID
 
 
@@ -99,3 +99,25 @@ def write_bank(clock, surface: Surface, paths: dict[int, np.ndarray],
             next_log += log_every
         time.sleep(0.02)
     return sent
+
+
+OPEN_MARGIN = 100          # pitch units above fully-closed that count as "open"
+
+
+def compare_faders(expected: dict, reported: dict, names: dict) -> list[str]:
+    """Faults found comparing what a bank should read against what it reports.
+
+    Levels are binary, so this only asks open-or-shut; that is exactly the
+    failure that matters, and it is immune to taper rounding.
+    """
+    faults = []
+    for ch, want in sorted(expected.items()):
+        if ch not in reported:
+            faults.append(f"{names[ch]}: no position reported")
+            continue
+        want_open = want > MIN_PITCH + OPEN_MARGIN
+        got_open = reported[ch] > MIN_PITCH + OPEN_MARGIN
+        if want_open != got_open:
+            faults.append(f"{names[ch]}: expected {'OPEN' if want_open else 'shut'}, "
+                          f"reads {'OPEN' if got_open else 'shut'}")
+    return faults

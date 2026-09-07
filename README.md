@@ -97,8 +97,30 @@ micrider -c show.toml offset
 micrider -c show.toml gains -o gains.json
 micrider -c show.toml plan
 micrider -c show.toml write
+micrider -c show.toml verify
 micrider -c show.toml write --bank 0
 ```
+
+`verify` is the one to run after every pass. Resolve reports a fader's position
+whenever automation moves it, and a bank switch makes it re-send all eight — so
+parking the playhead and reading the faders back says what the lane *actually*
+contains. It samples moments across the act, compares every track against the plan,
+and exits non-zero on any mismatch. It writes nothing, so it cannot damage a finished
+act, and it needs no screenshots:
+
+```
+$ micrider -c show.toml verify --samples 30
+checking 30 moments across 0-4385s on 16 tracks; nothing is written
+
+    1845.0s  expect Connie.wav, Keny.wav
+    2090.1s  expect John.wav
+    2241.8s  expect all closed
+    ...
+0 mismatch(es)
+```
+
+This needs `midi.in` set to the port Resolve's MIDI Output uses. It is the check that
+would have caught, in seconds, an hour of automation being silently erased.
 
 `plan` is free and instant after the first analysis — run it, read the region
 counts, and only then spend the real time on `write`.

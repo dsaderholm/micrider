@@ -1,13 +1,13 @@
 """micrider command line."""
 from __future__ import annotations
-import argparse, json, os, sys
+import argparse, json, os, random, sys, time
 
 from .config import Config
 from .analyze import Show
-from .shape import fader_path, open_fraction
+from .shape import fader_path, open_fraction, GRID
 from .mcu import Surface, BANK_SIZE
 from . import resolve as rv
-from .passes import banks_for, write_bank, Stalled
+from .passes import banks_for, write_bank, compare_faders, Stalled
 
 CHECKLIST = """
 Before any pass, in Resolve's Fairlight page:
@@ -124,6 +124,52 @@ pass --partial to say you have done that.
 """
 
 
+def cmd_verify(cfg, args):
+    """Check what is actually in the timeline, without writing anything.
+
+    Resolve reports a fader's position whenever automation moves it, and a bank
+    switch makes it re-send all eight.  So parking the playhead and reading the
+    faders back says what the lane really contains - no screenshots, no guessing,
+    and nothing is written, so this cannot damage a finished act.
+    """
+    if not cfg.midi_in:
+        print("verify needs the return port: set midi.in in the config "
+              "(the port Resolve's MIDI Output is set to).", file=sys.stderr)
+        return 2
+    show = _show(cfg, args)
+    tl = rv.timeline(); clock = rv.Clock(tl)
+    t0 = cfg.window[0]
+    t1 = cfg.window[1] or clock.duration()
+    plan = _plan(cfg, show, t1)
+    groups = banks_for(plan)
+
+    rng = random.Random(args.seed)
+    times = sorted(rng.uniform(t0 + 5, t1 - 5) for _ in range(args.samples))
+    print(f"checking {len(times)} moments across {t0:.0f}-{t1:.0f}s "
+          f"on {len(plan)} tracks; nothing is written")
+    print()
+    faults = 0
+    with Surface(cfg.midi_out, cfg.midi_in) as s:
+        for t in times:
+            clock.seek(t); time.sleep(0.35)
+            line, bad = [], []
+            for bank, chans in sorted(groups.items()):
+                s.select_bank(bank)
+                pos = s.read_positions(1.4)
+                want = {ch: int(plan[tn][1][int(t / GRID)]) for ch, tn in chans.items()}
+                names = {ch: cfg.tracks[tn] for ch, tn in chans.items()}
+                bad += compare_faders(want, pos, names)
+                line += [names[ch] for ch, v in sorted(want.items())
+                         if v > -8192 + 100]
+            faults += len(bad)
+            open_now = ", ".join(line) if line else "all closed"
+            print(f"  {t:8.1f}s  expect {open_now}")
+            for f in bad: print(f"      MISMATCH  {f}")
+    print()
+    print(f"{faults} mismatch(es)")
+    return 1 if faults else 0
+
+
 def cmd_write(cfg, args):
     show = _show(cfg, args)
     tl = rv.timeline(); clock = rv.Clock(tl)
@@ -168,6 +214,9 @@ def main(argv=None) -> int:
     g.add_argument("-o", "--out"); g.add_argument("--workdir")
     pl = sub.add_parser("plan", help="show what would be written, without writing")
     pl.add_argument("-v", "--verbose", action="store_true")
+    v = sub.add_parser("verify", help="read the faders back and check what was written")
+    v.add_argument("--samples", type=int, default=12)
+    v.add_argument("--seed", type=int, default=0)
     w = sub.add_parser("write", help="write automation in real time")
     w.add_argument("--bank", type=int); w.add_argument("--start", type=float)
     w.add_argument("--end", type=float); w.add_argument("--save", action="store_true")
@@ -177,7 +226,8 @@ def main(argv=None) -> int:
     args = p.parse_args(argv)
     cfg = Config.load(args.config)
     return {"doctor": cmd_doctor, "gains": cmd_gains, "offset": cmd_offset,
-            "plan": cmd_plan, "write": cmd_write}[args.cmd](cfg, args) or 0
+            "plan": cmd_plan, "verify": cmd_verify,
+            "write": cmd_write}[args.cmd](cfg, args) or 0
 
 
 if __name__ == "__main__":

@@ -18,7 +18,7 @@ tracks = [
 
 [midi]
 out = "Claude 1"          # loopMIDI port Resolve listens on
-# in  = "Claude B 1"      # optional: the port Resolve echoes back on
+in  = "Claude B 1"        # the port Resolve echoes back on; needed by `verify`
 
 # Clip gain already applied in the timeline. `micrider gains -o` writes this.
 [gains]

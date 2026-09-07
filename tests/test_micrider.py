@@ -10,7 +10,7 @@ import numpy as np
 from micrider.config import Config, Shape
 from micrider.mcu import db_to_pitch, MIN_PITCH, CALIBRATION, BANK_SIZE
 from micrider.shape import fader_path, open_fraction, GRID
-from micrider.passes import banks_for
+from micrider.passes import banks_for, compare_faders
 from micrider.resolve import source_offset
 
 
@@ -130,6 +130,33 @@ class TestSourceOffset(unittest.TestCase):
     def test_tracks_without_clips_are_skipped(self):
         tl = _Timeline(0, {1: [], 2: [_Item(300, 0)]})
         self.assertAlmostEqual(source_offset(tl, [1, 2], self.FPS), 300 / self.FPS, places=3)
+
+
+class TestCompareFaders(unittest.TestCase):
+    NAMES = {0: "Tom.wav", 1: "Connie.wav"}
+    OPEN, SHUT = db_to_pitch(0.0), MIN_PITCH
+
+    def test_agreement_is_silent(self):
+        want = {0: self.OPEN, 1: self.SHUT}
+        self.assertEqual(compare_faders(want, dict(want), self.NAMES), [])
+
+    def test_a_mic_that_should_be_open_but_reads_closed(self):
+        faults = compare_faders({0: self.OPEN}, {0: self.SHUT}, self.NAMES)
+        self.assertEqual(len(faults), 1)
+        self.assertIn("Tom.wav", faults[0])
+        self.assertIn("expected OPEN", faults[0])
+
+    def test_a_mic_left_open_that_should_be_closed(self):
+        faults = compare_faders({1: self.SHUT}, {1: self.OPEN}, self.NAMES)
+        self.assertIn("reads OPEN", faults[0])
+
+    def test_a_missing_report_is_a_fault(self):
+        faults = compare_faders({0: self.OPEN}, {}, self.NAMES)
+        self.assertIn("no position reported", faults[0])
+
+    def test_small_taper_differences_are_not_faults(self):
+        """Levels are binary, so only open-or-shut matters."""
+        self.assertEqual(compare_faders({0: self.OPEN}, {0: self.OPEN - 300}, self.NAMES), [])
 
 
 class TestConfig(unittest.TestCase):
