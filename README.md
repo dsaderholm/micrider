@@ -162,9 +162,17 @@ Things that cost real time, recorded so they cost nobody else any:
   independently. If only channel 0 seems to respond, see above.
 - **Fader touch is mandatory.** Note 104-111, velocity 127 down and 0 up. Without
   it Latch never engages, and Write lays a flat line that erases the lane.
-- **Never seek mid-pass.** Playing only the interesting parts sounds efficient and
-  clips every entrance, because Latch needs a moment after the transport starts and
-  a seek puts that moment exactly where the line begins. Play straight through.
+- **Play straight through; don't seek mid-pass.** Skipping the quiet stretches sounds
+  like free speed and it is not. Latch needs a moment after the transport starts, and a
+  seek puts that moment exactly where the next line begins, so entrances get clipped.
+  It also means the lane is only rewritten where you bothered to roll, so anything left
+  over from an earlier bad pass survives in the gaps.
+
+  The cost is real and worth knowing: on a 73-minute act that was 53% underscored,
+  skipping every closed gap over 20 s would have cut two passes from 146 minutes to 53.
+  If you want that, seek with a generous pre-roll and measure where automation actually
+  starts landing rather than assuming — but a pass you run once overnight is usually not
+  worth the risk of clipped entrances.
 - **Sync to Resolve's playhead, not wall time.** `GetCurrentTimecode()` costs about
   0.4 ms. Measured drift over a 73-minute pass stayed under 0.1 s.
 - **Compensate the write latency.** Automation lands about 0.11 s after the MIDI
