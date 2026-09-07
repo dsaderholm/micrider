@@ -67,6 +67,38 @@ class Clock:
         return (int(self.tl.GetEndFrame()) - self.start) / self.fps
 
 
+def source_offset(tl, tracks, fps: float = 30000 / 1001.0) -> float:
+    """Source seconds sitting at the start of the timeline.
+
+    This is the number that lines the analysis up with the timeline, and every
+    threshold is meaningless without it: read the wrong part of the recording and
+    you get confident, plausible automation in the wrong places.  It is also the
+    one setup value nobody can check by eye, so read it from the timeline instead
+    of measuring it by hand.
+
+    Raises if the tracks disagree, because that means the clips are not aligned
+    with each other and no single offset is correct.
+    """
+    seen: dict[float, list[int]] = {}
+    for tn in tracks:
+        items = tl.GetItemListInTrack("audio", tn) or []
+        if not items:
+            continue
+        it = items[0]
+        # frames into the source at the clip's first frame, less however far the
+        # clip sits past the start of the timeline
+        off = (int(it.GetLeftOffset()) - (int(it.GetStart()) - int(tl.GetStartFrame()))) / fps
+        seen.setdefault(round(off, 3), []).append(tn)
+    if not seen:
+        raise RuntimeError("no clips found on any configured track")
+    if len(seen) > 1:
+        detail = "; ".join(f"{v:.3f}s on A{', A'.join(map(str, t))}" for v, t in seen.items())
+        raise RuntimeError(
+            "the configured tracks do not share one source offset, so no single "
+            f"value is right: {detail}.  Line the clips up, or set offset by hand.")
+    return next(iter(seen))
+
+
 def read_clip_gains(tl, workdir: str) -> dict[str, float]:
     """Clip gain per audio clip, in dB.
 

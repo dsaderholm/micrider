@@ -25,12 +25,22 @@ Before any pass, in Resolve's Fairlight page:
 def _cache(cfg, args): return args.cache or os.path.join(cfg.audio_dir, ".micrider.npz")
 
 
+def _resolve_offset(cfg, verbose=True) -> None:
+    """Fill in offset = "auto" from the timeline before anything reads audio."""
+    if cfg.offset != "auto":
+        return
+    cfg.offset = rv.source_offset(rv.timeline(), sorted(cfg.tracks))
+    if verbose:
+        print(f"source offset read from the timeline: {cfg.offset:.3f}s", flush=True)
+
+
 def _show(cfg, args, verbose=True) -> Show:
-    s, c = Show(cfg), _cache(cfg, args)
+    c = _cache(cfg, args)
     if os.path.exists(c) and not args.refresh:
-        return s.load(c)
+        return Show(cfg).load(c)
+    _resolve_offset(cfg, verbose)
     if verbose: print("analysing audio (this happens once)...", flush=True)
-    return s.build(c, verbose)
+    return Show(cfg).build(c, verbose)
 
 
 def _plan(cfg, show, duration):
@@ -56,6 +66,15 @@ def cmd_doctor(cfg, args):
             print(f"   A{tn:<3} {tl.GetTrackName('audio', tn):<18} <- {cfg.tracks[tn]}")
     except Exception as e:
         print("Resolve: NOT reachable -", e)
+    try:
+        auto = rv.source_offset(rv.timeline(), sorted(cfg.tracks))
+        cur = "auto" if cfg.offset == "auto" else f"{cfg.offset:.3f}s"
+        note = "" if cfg.offset == "auto" or abs(cfg.offset - auto) < 0.05 else "   <-- DISAGREES"
+        print()
+        print(f"source offset: timeline says {auto:.3f}s, config says {cur}{note}")
+    except Exception as e:
+        print()
+        print("source offset: could not read from the timeline -", e)
     missing = [f for f in cfg.tracks.values() if not os.path.exists(cfg.path(f))]
     print("missing audio files:", ", ".join(missing) if missing else "none")
     print(CHECKLIST)
@@ -67,6 +86,10 @@ def cmd_gains(cfg, args):
     if args.out:
         json.dump(g, open(args.out, "w"), indent=1)
         print(f"\nwrote {args.out}")
+
+
+def cmd_offset(cfg, args):
+    print(f"{rv.source_offset(rv.timeline(), sorted(cfg.tracks)):.3f}")
 
 
 def cmd_plan(cfg, args):
@@ -140,6 +163,7 @@ def main(argv=None) -> int:
     p.add_argument("--cache"); p.add_argument("--refresh", action="store_true")
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("doctor", help="check MIDI, Resolve and the manual settings")
+    sub.add_parser("offset", help="print the source offset read from the timeline")
     g = sub.add_parser("gains", help="read clip gain out of the current timeline")
     g.add_argument("-o", "--out"); g.add_argument("--workdir")
     pl = sub.add_parser("plan", help="show what would be written, without writing")
@@ -152,7 +176,7 @@ def main(argv=None) -> int:
     w.add_argument("-y", "--yes", action="store_true")
     args = p.parse_args(argv)
     cfg = Config.load(args.config)
-    return {"doctor": cmd_doctor, "gains": cmd_gains,
+    return {"doctor": cmd_doctor, "gains": cmd_gains, "offset": cmd_offset,
             "plan": cmd_plan, "write": cmd_write}[args.cmd](cfg, args) or 0
 
 

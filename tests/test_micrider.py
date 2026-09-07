@@ -11,6 +11,7 @@ from micrider.config import Config, Shape
 from micrider.mcu import db_to_pitch, MIN_PITCH, CALIBRATION, BANK_SIZE
 from micrider.shape import fader_path, open_fraction, GRID
 from micrider.passes import banks_for
+from micrider.resolve import source_offset
 
 
 class TestFaderTaper(unittest.TestCase):
@@ -88,6 +89,47 @@ class TestBanks(unittest.TestCase):
         b = banks_for([3, 11])
         self.assertEqual(b[0], {2: 3})
         self.assertEqual(b[1], {2: 11})
+
+
+class _Item:
+    def __init__(self, left, start): self._left, self._start = left, start
+    def GetLeftOffset(self): return self._left
+    def GetStart(self): return self._start
+
+
+class _Timeline:
+    """Just enough of a Resolve timeline for the offset arithmetic."""
+    def __init__(self, start, items): self._start, self._items = start, items
+    def GetStartFrame(self): return self._start
+    def GetItemListInTrack(self, kind, n): return self._items.get(n, [])
+
+
+class TestSourceOffset(unittest.TestCase):
+    FPS = 30000 / 1001.0
+
+    def test_clip_flush_with_timeline_start(self):
+        """The Good News case: 51492 source frames in, clip at timeline start."""
+        tl = _Timeline(107892, {1: [_Item(51492, 107892)], 2: [_Item(51492, 107892)]})
+        self.assertAlmostEqual(source_offset(tl, [1, 2], self.FPS), 1718.12, places=2)
+
+    def test_clip_starting_later_than_the_timeline(self):
+        """A clip that starts 900 frames in reaches its source 900 frames sooner."""
+        tl = _Timeline(0, {1: [_Item(1800, 900)]})
+        self.assertAlmostEqual(source_offset(tl, [1], self.FPS), 900 / self.FPS, places=3)
+
+    def test_disagreeing_tracks_raise(self):
+        tl = _Timeline(0, {1: [_Item(1000, 0)], 2: [_Item(9999, 0)]})
+        with self.assertRaises(RuntimeError) as e:
+            source_offset(tl, [1, 2], self.FPS)
+        self.assertIn("do not share one source offset", str(e.exception))
+
+    def test_empty_tracks_raise(self):
+        with self.assertRaises(RuntimeError):
+            source_offset(_Timeline(0, {}), [1, 2], self.FPS)
+
+    def test_tracks_without_clips_are_skipped(self):
+        tl = _Timeline(0, {1: [], 2: [_Item(300, 0)]})
+        self.assertAlmostEqual(source_offset(tl, [1, 2], self.FPS), 300 / self.FPS, places=3)
 
 
 class TestConfig(unittest.TestCase):

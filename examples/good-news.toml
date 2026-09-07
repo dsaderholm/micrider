@@ -4,7 +4,7 @@
 [audio]
 dir     = "E:/Good News/Audio"
 program = "Tracks.wav"        # backing tracks; used to mask the songs
-offset  = 1718.12             # source seconds sitting at timeline start
+offset  = "auto"              # read from the clips; was 1718.12 measured by hand
 window  = [0.0, 4385.0]       # Act 1, in timeline seconds
 
 [timeline]

@@ -83,6 +83,7 @@ every track you are writing set to Latch, Write or Global.
 
 ```
 micrider -c show.toml doctor
+micrider -c show.toml offset
 micrider -c show.toml gains -o gains.json
 micrider -c show.toml plan
 micrider -c show.toml write
@@ -126,9 +127,19 @@ out = "Claude 1"
 "Tom.wav" = -1.0
 ```
 
-`offset` matters: thresholds are meaningless if the analysis is looking at a
-different part of the recording than the timeline is. If the clips carry no usable
-timecode, line one mic up by ear and measure it once.
+`offset` is the one value you cannot check by eye, and it matters more than any
+threshold: if the analysis reads a different part of the recording than the timeline
+plays, you get confident, plausible automation in all the wrong places. Set it to
+`"auto"` and micrider reads it from the clips themselves:
+
+```toml
+offset = "auto"
+```
+
+`micrider offset` prints what it works out, and `doctor` warns if a hand-set value
+disagrees with the timeline. It refuses to guess when the configured tracks don't
+share one offset, since that means the clips aren't aligned and no single value is
+right.
 
 ---
 

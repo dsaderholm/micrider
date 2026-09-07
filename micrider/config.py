@@ -54,7 +54,7 @@ class Config:
     audio_dir: str
     tracks: dict[int, str]              # Fairlight track number -> wav file
     program: str | None = None          # backing-track reference, for song masking
-    offset: float = 0.0                 # source seconds sitting at timeline start
+    offset: float | str = 0.0           # source seconds at timeline start, or "auto"
     window: tuple[float, float] = (0.0, 0.0)   # timeline seconds; (0,0) = whole timeline
     gains: dict[str, float] = field(default_factory=dict)
     midi_out: str = "Claude 1"
@@ -77,7 +77,8 @@ class Config:
         w = a.get("window", [0.0, 0.0])
         return cls(
             audio_dir=a["dir"], tracks=tracks, program=a.get("program"),
-            offset=float(a.get("offset", 0.0)), window=(float(w[0]), float(w[1])),
+            offset=(a["offset"] if a.get("offset") == "auto" else float(a.get("offset", 0.0))),
+            window=(float(w[0]), float(w[1])),
             gains=gains,
             midi_out=d.get("midi", {}).get("out", "Claude 1"),
             midi_in=d.get("midi", {}).get("in"),
