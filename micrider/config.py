@@ -6,19 +6,23 @@ from dataclasses import dataclass, field, asdict
 
 @dataclass
 class Shape:
-    """The trapezoid written for each speech region, and how it is driven.
+    """The rectangle written for each speech region, and how it is driven.
 
-    Defaults come from theatre practice: a mic opens slightly before the line so
-    no consonant is clipped, and closes shortly after so the next line's bleed
-    does not arrive through an open channel.
+    Deliberately only two levels and two edges.  micrider never writes a fade:
+    a fade costs keyframes (Resolve records about two per value change), and
+    keyframes are what make a line hard to re-balance afterwards.  The track's
+    expander already handles word-level detail, so automation only has to open
+    and close.  One region is four points, and the plateau is a single flat
+    segment you can grab and drag.
+
+    A mic opens slightly before the line so no consonant is clipped, and closes
+    shortly after so the next line's bleed does not arrive through an open
+    channel.
     """
-    open_db: float = 0.0        # plateau level
+    open_db: float = 0.0        # plateau level; closed is always -inf
     pre: float = 0.35           # fully open this long before speech starts
-    ramp_in: float = 0.10       # fade-up duration
     hold: float = 0.55          # stay open this long after speech ends
-    ramp_out: float = 0.30      # fade-down duration
     lead: float = 0.15          # sent early, to cancel Resolve's write latency
-    step: int = 1400            # pitch units between sends; larger = fewer points
 
 
 @dataclass

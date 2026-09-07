@@ -43,10 +43,7 @@ out = "Claude 1"          # loopMIDI port Resolve listens on
 "Tracks.wav" = -2.7
 
 [shape]
-open_db  = 0.0
-pre      = 0.35
-ramp_in  = 0.10
-hold     = 0.55
-ramp_out = 0.30
-lead     = 0.15
-step     = 1400
+open_db = 0.0     # closed is always -inf; there are no other levels
+pre     = 0.35    # open this long before the line
+hold    = 0.55    # close this long after it
+lead    = 0.15    # sent early, to cancel Resolve's write latency

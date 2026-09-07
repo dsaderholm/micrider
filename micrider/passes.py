@@ -90,9 +90,9 @@ def write_bank(clock, surface: Surface, paths: dict[int, np.ndarray],
         if j >= len(paths[chans[0]]): break
         for ch in chans:
             v = int(paths[ch][j])
-            # coarse steps keep the point count down, but the two levels that
-            # matter - fully open and fully closed - always land exactly
-            if abs(v - last[ch]) >= shape.step or                (v != last[ch] and v in (MIN_PITCH, plateau)):
+            # only two values ever exist, so this is one message per edge and
+            # Resolve records exactly two keyframes for it
+            if v != last[ch]:
                 surface.set(ch, v); last[ch] = v; sent += 1
         if t >= next_log:
             log(f"   {t / 60:6.2f} min / {t1 / 60:.1f}   "
