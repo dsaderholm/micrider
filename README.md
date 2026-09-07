@@ -15,6 +15,25 @@ mix lives.
 
 ---
 
+## Is this for you?
+
+Probably only if all of these are true:
+
+- You mix **multitrack lavalier recordings** — a stage musical, a play, anything where
+  each performer wears their own mic and every mic hears every line.
+- Each mic is a **separate file on its own Fairlight track**. If you recorded to one
+  interleaved file, split it first.
+- You have **Resolve Studio**. Free Resolve has no control-surface support, so none of
+  this works and there is no way around that.
+- You can spare **the length of the act, twice, per act**. Fairlight only records
+  automation while the timeline rolls.
+
+It writes dialogue automation and nothing else. It masks the musical numbers and leaves
+them to you, it makes no mixing decisions beyond open-or-shut, and it will not fix a mic
+that was never on.
+
+---
+
 ## Why this is harder than it sounds
 
 Resolve's Python API cannot write volume automation. Neither `.drt` nor `.drp`
@@ -279,10 +298,16 @@ MIDI nor audio.
 
 ## Requirements
 
-DaVinci Resolve **Studio** (free Resolve has no control-surface support), Python
-3.11+, `ffmpeg` on PATH, and a virtual MIDI driver. Developed on Resolve Studio 21
-on Windows; nothing in it is Windows-specific except the default path to Resolve's
-scripting modules, which `RESOLVE_SCRIPT_MODULES` overrides.
+DaVinci Resolve **Studio** (free Resolve has no control-surface support), Python 3.11+,
+`ffmpeg` on PATH, and a virtual MIDI driver.
+
+Built and run on **Resolve Studio 21 on Windows**, with loopMIDI. Nothing in the code is
+Windows-specific — the one hard-coded path, to Resolve's scripting modules, is overridden
+by `RESOLVE_SCRIPT_MODULES`, and the loopMIDI port names are only defaults you set in the
+config. macOS should work through the built-in IAC Driver and Linux through ALSA virtual
+ports, but **neither has been tried**, so treat them as unknown rather than supported. If
+you get it working on either, the interesting question is whether the fader taper in
+`mcu.CALIBRATION` still holds; it was measured, not taken from a spec.
 
 ## Licence
 
