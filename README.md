@@ -65,7 +65,12 @@ On the Fairlight page's automation toolbar there is a **Touch** group:
 
 > **If Touch is `Off`, Resolve accepts fader messages and silently does nothing
 > with them.** No error, no warning; the fader simply never moves. Set it to
-> **Latch**. It resets to `Off` every time Resolve restarts.
+> **Latch**.
+
+It resets itself to `Off` more often than you would expect: on every Resolve
+restart, and also after the machine sleeps and wakes with Resolve still running.
+Check it before every session, not just after a restart — `micrider doctor` cannot
+see this setting, so nothing but your own eyes will catch it.
 
 Also: mode **Write** (or Latch), **Enables > Fader** lit, **On Stop > Hold**, and
 every track you are writing set to Latch, Write or Global.
@@ -81,15 +86,23 @@ micrider -c show.toml doctor
 micrider -c show.toml gains -o gains.json
 micrider -c show.toml plan
 micrider -c show.toml write
-micrider -c show.toml write --bank 0 --start 600 --end 900
+micrider -c show.toml write --bank 0
 ```
 
 `plan` is free and instant after the first analysis — run it, read the region
 counts, and only then spend the real time on `write`.
 
-A pass is destructive in the useful sense: Write mode replaces the whole fader
-lane across the window it covers, so a bad earlier pass is repaired simply by
-running a good one over the same range.
+**Always run the full window.** A full-length pass in Write mode replaces the entire
+fader lane, so a bad earlier pass is repaired by running a good one — but only if the
+new pass covers the whole range.
+
+> A **partial** pass is destructive far beyond the range you give it. In Write mode,
+> stopping the transport propagates the held value forward from the punch-out point and
+> erases every automation point after it, to the end of the timeline. Sixty seconds of
+> "harmless" re-testing in the middle of a finished act wiped an hour of automation off
+> eight tracks. `micrider write` refuses `--start`/`--end` unless you pass `--partial`,
+> which is only safe with the tracks set to Latch — Latch punches out cleanly and leaves
+> later automation alone.
 
 ### The config
 
@@ -185,6 +198,10 @@ Things that cost real time, recorded so they cost nobody else any:
 - **A killed script never sends Stop**, so Resolve keeps rolling and Write keeps
   recording over everything. micrider always stops the transport on the way out, and
   treats a stalled transport as a hard failure for the same reason.
+- **Stopping a Write pass erases everything after it.** Not just inside the window you
+  played — Resolve holds the punch-out value forward to the end of the timeline. This is
+  instant, not the transport running on, so it is easy to miss until you zoom out. Full
+  passes only, unless the tracks are in Latch.
 - **Ignore the device-inquiry SysEx.** Resolve sends `7E 00 06 01` forever and
   accepts no identity reply. Faders work regardless.
 - **Verified fader mapping** (Touch = Latch, Write): pitch `3744` is exactly 0.0 dB,

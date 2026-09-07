@@ -85,11 +85,32 @@ def cmd_plan(cfg, args):
           f"{(cfg.window[1] - cfg.window[0]) / 60:.1f} min each")
 
 
+PARTIAL_WARNING = """
+REFUSING a partial-range pass.
+
+You asked to write {t0:.0f}-{t1:.0f}s, but the configured window is {f0:.0f}-{f1:.0f}s.
+
+In Write mode, stopping the transport does not just stop writing.  Resolve
+propagates the held value forward from the punch-out point, which ERASES every
+automation point after it, to the end of the timeline.  A short pass in the
+middle of a finished act will destroy the rest of that act on these tracks.
+
+Either run the full window (drop --start/--end), or set the tracks to Latch
+first - Latch punches out cleanly and leaves later automation alone - and then
+pass --partial to say you have done that.
+"""
+
+
 def cmd_write(cfg, args):
     show = _show(cfg, args)
     tl = rv.timeline(); clock = rv.Clock(tl)
-    t0 = args.start if args.start is not None else cfg.window[0]
-    t1 = args.end if args.end is not None else (cfg.window[1] or clock.duration())
+    full0 = cfg.window[0]
+    full1 = cfg.window[1] or clock.duration()
+    t0 = args.start if args.start is not None else full0
+    t1 = args.end if args.end is not None else full1
+    if (t0 > full0 + 0.01 or t1 < full1 - 0.01) and not args.partial:
+        print(PARTIAL_WARNING.format(t0=t0, t1=t1, f0=full0, f1=full1), file=sys.stderr)
+        return 2
     plan = _plan(cfg, show, t1)
     groups = banks_for(plan)
     wanted = groups if args.bank is None else {args.bank: groups[args.bank]}
@@ -126,6 +147,8 @@ def main(argv=None) -> int:
     w = sub.add_parser("write", help="write automation in real time")
     w.add_argument("--bank", type=int); w.add_argument("--start", type=float)
     w.add_argument("--end", type=float); w.add_argument("--save", action="store_true")
+    w.add_argument("--partial", action="store_true",
+                   help="allow a partial range; only safe with tracks set to Latch")
     w.add_argument("-y", "--yes", action="store_true")
     args = p.parse_args(argv)
     cfg = Config.load(args.config)
