@@ -143,8 +143,20 @@ def cmd_verify(cfg, args):
     plan = _plan(cfg, show, t1)
     groups = banks_for(plan)
 
+    # Mics are shut most of the time, so uniform sampling mostly lands on silence
+    # and proves very little.  Spend half the samples where something is open -
+    # those are the moments that can actually be wrong.
     rng = random.Random(args.seed)
-    times = sorted(rng.uniform(t0 + 5, t1 - 5) for _ in range(args.samples))
+    import numpy as np
+    span = slice(int(t0 / GRID), int(t1 / GRID))
+    live = np.zeros(len(next(iter(plan.values()))[1]), bool)
+    for _, path in plan.values():
+        live |= path > -8192 + 100
+    lit = (np.flatnonzero(live[span]) + span.start) * GRID
+    half = args.samples // 2
+    times = [rng.choice(lit) for _ in range(min(half, len(lit)))]
+    times += [rng.uniform(t0 + 5, t1 - 5) for _ in range(args.samples - len(times))]
+    times = sorted(float(t) for t in times)
     print(f"checking {len(times)} moments across {t0:.0f}-{t1:.0f}s "
           f"on {len(plan)} tracks; nothing is written")
     print()
