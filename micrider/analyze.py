@@ -6,7 +6,7 @@ louder on their mic than on the median of all the others.  That single test does
 most of the work; the rest is hysteresis so quiet onsets and tails survive.
 """
 from __future__ import annotations
-import os, subprocess
+import subprocess
 import numpy as np
 
 SR, BIN_SAMPLES = 8000, 400          # 8 kHz, 50 ms bins

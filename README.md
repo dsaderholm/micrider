@@ -210,6 +210,16 @@ Things that cost real time, recorded so they cost nobody else any:
 
 ---
 
+## Tests
+
+```
+python -m unittest discover -s tests
+```
+
+They cover the parts that decide *what* gets written — the fader taper, the shape of
+the path, region merging, bank layout, config loading — and need neither Resolve nor
+MIDI nor audio.
+
 ## Requirements
 
 DaVinci Resolve **Studio** (free Resolve has no control-surface support), Python

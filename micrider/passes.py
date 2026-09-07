@@ -13,7 +13,7 @@ from __future__ import annotations
 import time
 import numpy as np
 
-from .mcu import Surface, BANK_SIZE, MIN_PITCH, db_to_pitch
+from .mcu import Surface, BANK_SIZE
 from .shape import GRID
 
 
@@ -43,7 +43,6 @@ def write_bank(clock, surface: Surface, paths: dict[int, np.ndarray],
     origin = clock.now()
 
     chans = sorted(paths)
-    plateau = db_to_pitch(shape.open_db)
     for ch in chans: surface.touch(ch, True)        # Latch engages on touch
     time.sleep(0.10)
     last = {}

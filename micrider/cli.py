@@ -1,11 +1,11 @@
 """micrider command line."""
 from __future__ import annotations
-import argparse, json, os, sys, time
+import argparse, json, os, sys
 
 from .config import Config
 from .analyze import Show
-from .shape import fader_path, open_fraction, GRID
-from .mcu import Surface, db_to_pitch, BANK_SIZE
+from .shape import fader_path, open_fraction
+from .mcu import Surface, BANK_SIZE
 from . import resolve as rv
 from .passes import banks_for, write_bank, Stalled
 
