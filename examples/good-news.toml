@@ -1,0 +1,52 @@
+# Good News (1993 Wichita staging) - Act 1.
+# 16 lavaliers on A1-A16, condensers and backing tracks above them.
+
+[audio]
+dir     = "E:/Good News/Audio"
+program = "Tracks.wav"        # backing tracks; used to mask the songs
+offset  = 1718.12             # source seconds sitting at timeline start
+window  = [0.0, 4385.0]       # Act 1, in timeline seconds
+
+[timeline]
+first_track = 1
+tracks = [
+  "Tom.wav", "Connie.wav", "Bob.wav", "Babe.wav",
+  "Pat.wav", "Beef.wav", "Sylv.wav", "Flo.wav",
+  "Millie.wav", "Slats.wav", "Keny.wav", "John.wav",
+  "Pooch.wav", "Karl.wav", "Lucy.wav", "Cord.wav",
+]
+
+[midi]
+out = "Claude 1"          # loopMIDI port Resolve listens on
+# in  = "Claude B 1"      # optional: the port Resolve echoes back on
+
+# Clip gain already applied in the timeline. `micrider gains -o` writes this.
+[gains]
+"Tom.wav" = -1.0
+"Connie.wav" = 7.4
+"Bob.wav" = 1.8
+"Babe.wav" = 6.0
+"Pat.wav" = 0.5
+"Beef.wav" = -1.3
+"Sylv.wav" = 1.3
+"Flo.wav" = 9.3
+"Millie.wav" = 9.1
+"Slats.wav" = -1.3
+"Keny.wav" = 3.8
+"John.wav" = 1.3
+"Pooch.wav" = 1.5
+"Karl.wav" = 4.9
+"Lucy.wav" = 3.3
+"Cord.wav" = 9.1
+"Audience.wav" = 11.0
+"Stage.wav" = 14.2
+"Tracks.wav" = -2.7
+
+[shape]
+open_db  = 0.0
+pre      = 0.35
+ramp_in  = 0.10
+hold     = 0.55
+ramp_out = 0.30
+lead     = 0.15
+step     = 1400
