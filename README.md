@@ -63,14 +63,24 @@ pip install -e .
 On the Fairlight page's automation toolbar there is a **Touch** group:
 `Off / Latch / Snap / Snap Latch`.
 
-> **If Touch is `Off`, Resolve accepts fader messages and silently does nothing
-> with them.** No error, no warning; the fader simply never moves. Set it to
-> **Latch**.
+> **Touch must be `Latch`.** On `Off`, a pass does not write correctly, with no error
+> and no warning. That one setting cost an entire night of debugging: every symptom
+> looked like a MIDI problem — values appearing to wrap, faders seemingly pinned,
+> only one channel responding — and none of them were.
 
-It resets itself to `Off` more often than you would expect: on every Resolve
-restart, and also after the machine sleeps and wakes with Resolve still running.
-Check it before every session, not just after a restart — `micrider doctor` cannot
-see this setting, so nothing but your own eyes will catch it.
+It resets itself to `Off` more often than you would expect: on every Resolve restart,
+and also after the machine sleeps and wakes with Resolve still running. Check it
+before every session, not just after a restart.
+
+**You cannot test it from software**, which is why `doctor` only reminds you to look.
+Two things that seem like they should detect it do not:
+
+- With the transport stopped, the fader still moves normally on `Off` — so driving a
+  fader and watching it proves nothing.
+- Resolve's MIDI echo reports back the value that was *sent*, not the fader's real
+  position, so the echo is identical in both states.
+
+Both were measured, not assumed. Use your eyes.
 
 Also: mode **Write** (or Latch), **Enables > Fader** lit, **On Stop > Hold**, and
 every track you are writing set to Latch, Write or Global.
