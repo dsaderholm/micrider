@@ -10,6 +10,17 @@ import time
 import mido
 
 FADER_TOUCH = 104      # note 104..111 = fader 1..8; velocity 127 down, 0 up
+
+# Resolve will not act on transport or fader messages until it believes a surface
+# is really there.  It asks once a second with a MIDI Identity Request and waits
+# for the reply every hardware MCU sends.  Without it Resolve transmits happily -
+# so the wiring looks correct and `doctor` passes - while ignoring everything it
+# receives, and a pass dies with "the transport never started".
+IDENTITY_REQUEST = (0x7E, 0x00, 0x06, 0x01)
+IDENTITY_REPLY = (0x7E, 0x00, 0x06, 0x02,       # sysex non-realtime, identity reply
+                  0x00, 0x00, 0x66,             # Mackie
+                  0x14,                         # Mackie Control
+                  1, 2, 3, 4, 5, 6, 7)          # serial; any value is accepted
 PLAY, STOP = 94, 93
 BANK_LEFT, BANK_RIGHT = 46, 47
 CHAN_LEFT, CHAN_RIGHT = 48, 49
@@ -42,9 +53,38 @@ class Surface:
     """A write-only MCU surface.  Resolve echoes fader positions back on its own
     MIDI output; reading them is optional and only used by `doctor`."""
 
-    def __init__(self, out_name: str, in_name: str | None = None):
+    def __init__(self, out_name: str, in_name: str | None = None,
+                 handshake: float = 4.0):
         self.out = mido.open_output(out_name)
         self.inp = mido.open_input(in_name) if in_name else None
+        if self.inp and handshake:
+            self.handshake(handshake)
+
+    # ---- identity --------------------------------------------------------
+    def answer_identity(self) -> int:
+        """Reply to any pending identity request.  Cheap; call it in a loop."""
+        if not self.inp:
+            return 0
+        n = 0
+        for m in self.inp.iter_pending():
+            if m.type == "sysex" and tuple(m.data[:4]) == IDENTITY_REQUEST:
+                self.out.send(mido.Message("sysex", data=IDENTITY_REPLY))
+                n += 1
+        return n
+
+    def handshake(self, timeout: float = 4.0) -> bool:
+        """Wait for Resolve's identity request and answer it.
+
+        Returns False if none arrived, which means Resolve is not transmitting
+        at all - a real wiring or protocol problem rather than a missing reply.
+        """
+        t0 = time.time()
+        while time.time() - t0 < timeout:
+            if self.answer_identity():
+                time.sleep(0.2)
+                return True
+            time.sleep(0.02)
+        return False
 
     # ---- transport -------------------------------------------------------
     def press(self, note: int, hold: float = 0.05, after: float = 0.25) -> None:

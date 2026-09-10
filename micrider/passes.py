@@ -60,6 +60,7 @@ def write_bank(clock, surface: Surface, paths: dict[int, np.ndarray],
     next_log = t0 + log_every
 
     while True:
+        surface.answer_identity()      # Resolve re-polls; ignoring it drops the link
         try:
             t = t0 + (clock.now() - origin)
         except Exception:
